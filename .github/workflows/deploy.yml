@@ -16,9 +16,11 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push Docker image
-        uses: docker/build-push@v3
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v2
         with:
+          context: .
+          file: Dockerfile
           push: true
-          tags: ocr/ocr:latest
+          tags: godentist/${{ secrets.IMAGE_NAME }}:latest
 
