@@ -86,7 +86,7 @@ def download_image(url: str) -> np.array:
 current_directory = os.getcwd()
 
 # Use the current directory as the model directory
-model_path = os.path.join(current_directory, 'model.pt')
+model_path = os.path.join(current_directory, 'Model/model.pt')
 
 
 @app.on_event("startup")
