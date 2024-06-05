@@ -59,17 +59,23 @@ def resize_image_to_fixed_size(image: np.array, target_shape=(640, 640)) -> np.a
 def preprocess_image_with_resize(image: np.array) -> np.array:
     """ Convert to binary, apply Otsu's thresholding, and resize to (640, 640). """
     image = convert_to_binary(image)
-    # image = thresholding_otsu(image)
     image = resize_image_to_fixed_size(image, target_shape=(640, 640))
     return image
 
 
-def extract_text(image, coords):
-    """ Extract text from specified coordinates in the image using Tesseract OCR. """
+def extract_text_nik(image, coords):
+    """ Extract text from specified coordinates in the image using Tesseract OCR for NIK class. """
     x1, y1, x2, y2 = coords
     crop_img = image[y1:y2, x1:x2]
-    # Specify the language as 'ind' for Indonesian
-    text = pytesseract.image_to_string(crop_img, lang='ind', config='--psm 6')
+    text = pytesseract.image_to_string(crop_img, lang='ktpind', config='--psm 6')
+    return text.strip()
+
+
+def extract_text_other_classes(image, coords):
+    """ Extract text from specified coordinates in the image using Tesseract OCR for other classes. """
+    x1, y1, x2, y2 = coords
+    crop_img = image[y1:y2, x1:x2]
+    text = pytesseract.image_to_string(crop_img, lang='ktpind2', config='--psm 6')
     return text.strip()
 
 
@@ -135,7 +141,10 @@ async def detect(request: ImageRequest):
                 conf = box.conf[0].item()
                 if conf > best_detections[class_id]["conf"]:
                     coords = [round(x) for x in box.xyxy[0].tolist()]
-                    text = extract_text(img_display, coords)
+                    if class_id == "NIK":
+                        text = extract_text_nik(img_display, coords)
+                    else:
+                        text = extract_text_other_classes(img_display, coords)
                     best_detections[class_id] = {
                         'conf': conf,
                         'text': text
