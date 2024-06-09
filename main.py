@@ -59,23 +59,17 @@ def resize_image_to_fixed_size(image: np.array, target_shape=(640, 640)) -> np.a
 def preprocess_image_with_resize(image: np.array) -> np.array:
     """ Convert to binary, apply Otsu's thresholding, and resize to (640, 640). """
     image = convert_to_binary(image)
+    # image = thresholding_otsu(image)
     image = resize_image_to_fixed_size(image, target_shape=(640, 640))
     return image
 
 
-def extract_text_nik(image, coords):
-    """ Extract text from specified coordinates in the image using Tesseract OCR for NIK class. """
+def extract_text(image, coords):
+    """ Extract text from specified coordinates in the image using Tesseract OCR. """
     x1, y1, x2, y2 = coords
     crop_img = image[y1:y2, x1:x2]
+    # Specify the language as 'ind' for Indonesian
     text = pytesseract.image_to_string(crop_img, lang='ktpind', config='--psm 6')
-    return text.strip()
-
-
-def extract_text_other_classes(image, coords):
-    """ Extract text from specified coordinates in the image using Tesseract OCR for other classes. """
-    x1, y1, x2, y2 = coords
-    crop_img = image[y1:y2, x1:x2]
-    text = pytesseract.image_to_string(crop_img, lang='ktpind2', config='--psm 6')
     return text.strip()
 
 
@@ -83,16 +77,25 @@ def download_image(url: str) -> np.array:
     response = requests.get(url)
     if response.status_code == 200:
         image = Image.open(BytesIO(response.content))
-        return np.array(image)
+        return convert_to_png(np.array(image))
     else:
         raise HTTPException(status_code=400, detail="Failed to download image")
+
+
+def convert_to_png(image: np.array) -> np.array:
+    """ Convert the image to PNG format if it is in JPG format. """
+    pil_image = Image.fromarray(image)
+    with BytesIO() as output:
+        pil_image.save(output, format="PNG")
+        png_image = Image.open(output)
+        return np.array(png_image)
 
 
 # Get the current working directory
 current_directory = os.getcwd()
 
 # Use the current directory as the model directory
-model_path = os.path.join(current_directory, 'Model/model.pt')
+model_path = os.path.join(current_directory, 'model.pt')
 
 
 @app.on_event("startup")
@@ -141,10 +144,7 @@ async def detect(request: ImageRequest):
                 conf = box.conf[0].item()
                 if conf > best_detections[class_id]["conf"]:
                     coords = [round(x) for x in box.xyxy[0].tolist()]
-                    if class_id == "NIK":
-                        text = extract_text_nik(img_display, coords)
-                    else:
-                        text = extract_text_other_classes(img_display, coords)
+                    text = extract_text(img_display, coords)
                     best_detections[class_id] = {
                         'conf': conf,
                         'text': text
